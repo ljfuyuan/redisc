@@ -1,6 +1,7 @@
 package redisc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -228,6 +229,48 @@ func (c *Conn) Do(cmd string, args ...interface{}) (interface{}, error) {
 	return c.DoWithTimeout(-1, cmd, args...)
 }
 
+// DoContext sends a command to server and returns the received reply.
+// If the connection is not yet bound to a cluster node, it will be after this
+// call, based on the rules documented in the Conn type.
+// min(ctx,DialReadTimeout()) will be used as the deadline.
+// The connection will be closed if DialReadTimeout() timeout or ctx timeout or ctx canceled when this function is running.
+// DialReadTimeout() timeout return err can be checked by errors.Is(err, os.ErrDeadlineExceeded).
+// ctx timeout return err context.DeadlineExceeded.
+// ctx canceled return err context.Canceled.
+func (c *Conn) DoContext(ctx context.Context, cmd string, args ...interface{}) (v interface{}, err error) {
+	// The blank command is a special redigo/redis command that flushes the
+	// output buffer and receives all pending replies. This is used, for example,
+	// when returning a Redis connection back to the pool. If we receive the
+	// blank command, don't bind to a random node if this connection is not bound
+	// yet.
+	if cmd == "" && len(args) == 0 {
+		c.mu.Lock()
+		rc := c.rc
+		c.mu.Unlock()
+		if rc == nil {
+			return nil, nil
+		}
+	}
+
+	rc, _, err := c.bind(cmdSlot(cmd, args))
+	if err != nil {
+		return nil, err
+	}
+
+	if rcwt, ok := rc.(redis.ConnWithContext); ok {
+		v, err = rcwt.DoContext(ctx, cmd, args...)
+	} else {
+		return nil, errors.New("redisc: connection does not support ConnWithContext")
+	}
+	// handle redirections, if any
+	if re := ParseRedir(err); re != nil {
+		if re.Type == "MOVED" {
+			c.cluster.needsRefresh(re)
+		}
+	}
+	return v, err
+}
+
 // DoWithTimeout sends a command to the server and returns the received reply.
 // If the connection is not yet bound to a cluster node, it will be after this
 // call, based on the rules documented in the Conn type.
@@ -285,6 +328,33 @@ func (c *Conn) Send(cmd string, args ...interface{}) error {
 // documented in the Conn type.
 func (c *Conn) Receive() (interface{}, error) {
 	return c.ReceiveWithTimeout(-1)
+}
+
+// ReceiveContext receives a single reply from the Redis server.  If the
+// connection is not yet bound to a cluster node, it will be after this call,
+// based on the rules documented in the Conn type.
+// min(ctx,DialReadTimeout()) will be used as the deadline.
+// The connection will be closed if DialReadTimeout() timeout or ctx timeout or ctx canceled when this function is running.
+// DialReadTimeout() timeout return err can be checked by errors.Is(err, os.ErrDeadlineExceeded).
+// ctx timeout return err context.DeadlineExceeded.
+// ctx canceled return err context.Canceled.
+func (c *Conn) ReceiveContext(ctx context.Context) (v interface{}, err error) {
+	rc, _, err := c.bind(-1)
+	if err != nil {
+		return nil, err
+	}
+	if rcwt, ok := rc.(redis.ConnWithContext); ok {
+		v, err = rcwt.ReceiveContext(ctx)
+	} else {
+		return nil, errors.New("redisc: connection does not support ConnWithContext")
+	}
+	// handle redirections, if any
+	if re := ParseRedir(err); re != nil {
+		if re.Type == "MOVED" {
+			c.cluster.needsRefresh(re)
+		}
+	}
+	return v, err
 }
 
 // ReceiveWithTimeout receives a single reply from the Redis server.  If the

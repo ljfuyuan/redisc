@@ -40,11 +40,11 @@ type Cluster struct {
 	// values are expected as "address:port" (e.g.: "127.0.0.1:6379").
 	StartupNodes []string
 
-	// DialOptions is the list of options to set on each new connection.
+	// DialOptions is the list of pipeOptions to set on each new connection.
 	DialOptions []redis.DialOption
 
 	// CreatePool is the function to call to create a redis.Pool for the
-	// specified TCP address, using the provided options as set in DialOptions.
+	// specified TCP address, using the provided pipeOptions as set in DialOptions.
 	// If this field is not nil, a redis.Pool is created for each node in the
 	// cluster and the pool is used to manage the connections returned by Get.
 	CreatePool func(address string, options ...redis.DialOption) (*redis.Pool, error)
@@ -471,6 +471,28 @@ func (c *Cluster) Get() redis.Conn {
 		cluster: c,
 		err:     err,
 	}
+}
+
+// GetPipeline returns a Conn interface that can handle Redis Pipeline
+func (c *Cluster) GetPipeline(options ...PipeOption) redis.Conn {
+	c.mu.Lock()
+	err := c.err
+	c.mu.Unlock()
+
+	var po pipeOptions
+
+	for _, option := range options {
+		option.f(&po)
+	}
+
+	conn := &PipeConn{
+		cluster:     c,
+		transaction: po.transaction,
+		readOnly:    po.readOnly,
+		err:         err,
+	}
+
+	return conn
 }
 
 // EachNode calls fn for each node in the cluster, with a connection bound to

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mna/redisc/redistest/resp"
+	"github.com/ljfuyuan/redisc/redistest/resp"
 	"github.com/stretchr/testify/require"
 )
 

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/mna/redisc/redistest"
-	"github.com/mna/redisc/redistest/resp"
+	"github.com/ljfuyuan/redisc/redistest"
+	"github.com/ljfuyuan/redisc/redistest/resp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -750,7 +750,7 @@ func TestCommands(t *testing.T) {
 			{"HGET", redis.Args{"ha", "f1"}, []byte("2"), ""},
 			{"HGETALL", redis.Args{"ha"}, []interface{}{[]byte("f1"), []byte("2")}, ""},
 			{"HSETNX", redis.Args{"ha", "f2", "3"}, int64(1), ""},
-			//{"HSTRLEN", redis.Args{"hb", "f2"}, int64(3), ""}, // redis 3.2 only
+			// {"HSTRLEN", redis.Args{"hb", "f2"}, int64(3), ""}, // redis 3.2 only
 			{"HVALS", redis.Args{"hb"}, []interface{}{[]byte("1"), []byte("0.5")}, ""},
 			{"HSCAN", redis.Args{"hb", 0}, lenResult(2), ""},
 		},

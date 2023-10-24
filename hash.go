@@ -43,3 +43,33 @@ func SplitBySlot(keys ...string) [][]string {
 	}
 	return bySlot
 }
+
+func SplitByNode(c *Cluster, keys ...string) [][]string {
+	slots := SplitBySlot(keys...)
+
+	c.mu.Lock()
+	err := c.err
+	mapping := c.mapping
+	c.mu.Unlock()
+
+	if err != nil {
+		return slots
+	}
+
+	byNode := make([][]string, 0, len(slots))
+	m := make(map[string][]string)
+	for _, slot := range slots {
+		s := Slot(slot[0])
+		if len(mapping[s]) > 0 {
+			m[mapping[s][0]] = append(m[mapping[s][0]], slot...)
+		} else {
+			byNode = append(byNode, slot)
+		}
+	}
+
+	for _, v := range m {
+		byNode = append(byNode, v)
+	}
+
+	return byNode
+}

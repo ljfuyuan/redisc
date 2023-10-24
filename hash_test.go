@@ -73,3 +73,39 @@ func TestSplitBySlot(t *testing.T) {
 		t.Logf("%#v", got)
 	}
 }
+
+func TestSplitByNode(t *testing.T) {
+	cluster := &Cluster{}
+	// a slot 15495
+	// b slot 3300
+	// c slot 7365
+	// d slot 11298 missing
+	// e{d} slot  11298 missing
+	cluster.mapping[15495] = []string{"server-1-master", "server-1-replica"}
+	cluster.mapping[3300] = []string{"server-2-master", "server-2-replica"}
+	cluster.mapping[7365] = []string{"server-2-master", "server-2-replica"}
+
+	cases := []struct {
+		// join/split by comma, for convenience
+		in  string
+		out []string
+	}{
+		{"a,b,c,d,e{d}", []string{"d,e{d}", "b,c", "a"}},
+	}
+
+	for _, c := range cases {
+		args := strings.Split(c.in, ",")
+		if c.in == "" {
+			args = nil
+		}
+		got := SplitByNode(cluster, args...)
+
+		exp := make([][]string, len(c.out))
+		for i, o := range c.out {
+			exp[i] = strings.Split(o, ",")
+		}
+
+		assert.Equal(t, exp, got, c.in)
+		t.Logf("%#v", got)
+	}
+}

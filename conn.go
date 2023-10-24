@@ -138,13 +138,30 @@ func (c *Conn) bind(slot int) (rc redis.Conn, ok bool, err error) {
 	return rc, ok, err
 }
 
-func cmdSlot(_ string, args []interface{}) int {
+func cmdSlot(command string, args []interface{}) int {
 	slot := -1
 	if len(args) > 0 {
-		key := fmt.Sprintf("%s", args[0])
-		slot = Slot(key)
+		if key, err := cmdKey(command, args); err == nil {
+			slot = Slot(key)
+		}
 	}
 	return slot
+}
+
+func cmdKey(command string, args []interface{}) (key string, err error) {
+
+	index := 0
+
+	if command == "EVAL" || command == "EVALSHA" {
+		index = 2
+	}
+
+	if len(args) > index {
+		key = fmt.Sprintf("%s", args[index])
+	} else {
+		err = errors.New("can not get key from args")
+	}
+	return
 }
 
 // BindConn is a convenience function that checks if c implements a Bind method

@@ -57,6 +57,8 @@ The main features are:
 * Automatic detection of the node to call based on the command's first parameter (assumed to be the key).
 * Explicit selection of the node to call via `BindConn` when needed.
 * Support for optimal batch calls via `SplitBySlot`.
+* Support for optimal batch calls via `SplitByNode`.
+* Automatically execute commands concurrently in batches according to the target node via `GetPipeline`.
 
 Note that to make efficient use of Redis Cluster, some upfront work is usually required. A good understanding of Redis Cluster is highly recommended and the official Redis website has [good documentation that covers this](https://redis.io/topics/cluster-spec). In particular, [Migrating to Redis Cluster](https://redis.io/topics/cluster-tutorial#migrating-to-redis-cluster) will help understand how straightforward (or not) the migration may be for your specific case.
 
